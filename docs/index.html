@@ -1,0 +1,243 @@
+<!-- Copyright (c) Meta Platforms, Inc. and affiliates.
+This source code is licensed under the CC BY-NC 4.0 license found in the
+LICENSE file in the root directory of this source tree. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShapeR</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">ShapeR</h1>
+                <p class="hero-subtitle">
+                    Robust Conditional 3D Shape Generation from Casual Captures
+                </p>
+                <div class="hero-authors">
+                    <p class="author-list">Yawar Siddiqui, Duncan Frost, Samir Aroudj, Armen Avetisyan, Henry Howard-Jenkins, Daniel DeTone, Pierre Moulon, Qirui Wu<sup>†</sup>, Zhengqin Li, Julian Straub, Richard Newcombe, Jakob Engel</p>
+                    <p class="author-affiliation">Meta Reality Labs Research &nbsp;&nbsp;&nbsp; <sup>†</sup>Simon Fraser University</p>
+                </div>
+                <div class="hero-buttons">
+                    <a href="https://cdn.jsdelivr.net/gh/facebookresearch/ShapeR@main/resources/ShapeR.pdf" class="btn btn-primary">Read Paper</a>
+                    <a href="https://arxiv.org/abs/2601.11514" class="btn btn-secondary">arXiv</a>
+                    <a href="https://www.youtube.com/watch?v=EbY30KAA55I" class="btn btn-secondary">Video</a>
+                    <a href="https://github.com/facebookresearch/ShapeR" class="btn btn-secondary">Code & Model</a>
+                    <a href="https://huggingface.co/datasets/facebook/ShapeR-Evaluation" class="btn btn-secondary">Data</a>
+                </div>
+            </div>
+            <div class="hero-media">
+                <div class="video-container">
+                    <img src="videos/intro.gif" alt="ShapeR Demo">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Purpose Section -->
+    <section class="purpose-section">
+        <div class="section-container">
+            <h2 class="section-title">Metric Generative Shape Reconstruction</h2>
+            <p class="section-description">
+                 From an input image sequence, ShapeR preprocesses per-object multimodal data (SLAM points, images, captions). A rectified flow transformer then conditions on these inputs to generate meshes object-centrically, producing a full metric scene reconstruction.
+            </p>
+            <div class="purpose-grid">
+                <div class="video-card">
+                    <div class="video-card-media">
+                        <video autoplay loop muted playsinline>
+                            <source src="videos/video_inference.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <p class="video-card-caption">Conditioned on off-the-shelf preprocessed inputs—SLAM points, 3D instances, and text—ShapeR infers per-object meshes to reconstruct the entire scene.</p>
+                </div>
+                <div class="video-card">
+                    <div class="video-card-media">
+                        <video autoplay loop muted playsinline>
+                            <source src="videos/video_objectcentric.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <p class="video-card-caption">While monolithic methods fuse the scene into one block, ShapeR reconstructs individual objects. This allows you to interact with and manipulate specific objects in the scene.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technical Overview Section -->
+    <section class="technical-section">
+        <div class="section-container">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-description">
+                ShapeR performs generative, object-centric 3D reconstruction from image sequences by leveraging multimodal inputs and robust training strategies. First, off-the-shelf SLAM and 3D instance detection are used to compute 3D points and object instances. For each object, sparse points, relevant images, 2D projections, and VLM captions are extracted to condition a rectified flow model, which denoises a latent VecSet to produce the 3D shape. The use of <b>multimodal conditioning</b>, along with heavy <b>on-the-fly compositional augmentations</b> and <b>curriculum training</b>, ensures the robustness of ShapeR in real-world scenarios.
+            </p>
+            <div class="process-steps">
+                <div class="step">
+                    <div class="step-image">
+                        <img src="images/panel1.png" alt="Multimodal Conditioning">
+                    </div>
+                    <div class="step-content">
+                        <h3>Multimodal Conditioning</h3>
+                        <p>ShapeR conditions on a range of modalities, including the object's posed multiview images, SLAM points, text descriptions, and 2D point projections.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-image">
+                        <img src="images/panel2.png" alt="Heavy Compositional Augmentation">
+                    </div>
+                    <div class="step-content">
+                        <h3>Compositional Augmentation</h3>
+                        <p>ShapeR leverages single-object pretraining with extensive augmentations, simulating realistic backgrounds, occlusions, and noise across images and SLAM inputs.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-image">
+                        <img src="images/panel3.png" alt="Two Stage Curriculum Training">
+                    </div>
+                    <div class="step-content">
+                        <h3>Two Stage Curriculum Training</h3>
+                        <p>ShapeR is fine-tuned on object-centric crops from Aria Synthetic Environment scenes, which feature realistic image occlusions, SLAM point cloud noise, and inter-object interaction.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="youtube-section">
+                <div class="youtube-text">
+                    <h3 class="youtube-label">Watch the full presentation to learn more details.</h3>
+                    <p class="youtube-subtext">For even more detail, refer to the <a href="#">paper</a>.</p>
+                </div>
+                <div class="youtube-container">
+                    <iframe src="https://www.youtube.com/embed/EbY30KAA55I" title="ShapeR Full Video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ShapeR Evaluation Dataset Section -->
+    <section class="dataset-section">
+        <div class="section-container">
+            <h2 class="section-title">ShapeR Evaluation Dataset</h2>
+            <p class="section-description">
+                ShapeR comes with <a href="https://huggingface.co/datasets/facebook/ShapeR-Evaluation"><u>a new evaluation dataset</u></a> of in-the-wild sequences with paired posed multi-view images, SLAM point clouds, and individually complete 3D shape annotations for 178 objects across 7 diverse scenes. In contrast to existing real-world 3D reconstruction datasets which are either captured in controlled setups or have merged object and background geometries or incomplete shapes, this dataset is designed to capture real-world challenges like occlusions, clutter, and variable resolution and viewpoints to enable realistic, in-the-wild evaluation.
+            </p>
+            <div class="dataset-images">
+                <figure class="dataset-figure">
+                    <img src="images/dataset.png" alt="ShapeR Dataset Overview">
+                    <figcaption>Category distribution of 178 objects across 7 sequences along with examples showing ground-truth mesh, representative frame, aligned mesh, and 2D projection.</figcaption>
+                </figure>
+                <figure class="dataset-figure">
+                    <img src="images/data_annotation.jpg" alt="Data Annotation Process">
+                    <figcaption>To obtain pseudo-ground truth, we capture the object in isolation (left) and generate geometry via image-to-3D modeling (mid). The mesh is then manually aligned to the original sequence and verified against 2D projections and point clouds (right).</figcaption>
+                </figure>
+            </div>
+        </div>
+    </section>
+
+    <!-- SAM3D Comparison Section -->
+    <section class="comparison-section">
+        <div class="section-container">
+            <h2 class="section-title">How is it Different to SAM3D Objects?</h2>
+            <div class="comparison-content">
+                <div class="comparison-text">
+                    <p>SAM 3D Objects marks a significant improvement in shape generation, but it <b>lacks metric accuracy</b> and <b>requires interaction</b>. Since it can only exploit a single view, it can sometimes <b>fail to preserve correct aspect ratios, relative scales, and object layouts in complex scenes</b> such as shown in the example here.</p>
+                <figure class="comparison-figure">
+                    <img src="images/comparison_sam3d_black.jpg" alt="ShapeR vs SAM3D Comparison">
+                </figure>
+                    <p>ShapeR solves this by leveraging image sequences and multimodal data (such as SLAM points). By integrating multiple posed views, ShapeR automatically produces metrically accurate and consistent reconstructions. Unlike interactive single-image methods, ShapeR robustly handles casually captured real-world scenes, <b>generating high-quality metric shapes and arrangements without requiring user interaction.</b></p>
+                    <p>Notably, ShapeR achieves this while trained entirely on synthetic data, whereas SAM 3D exploits large-scale labeled real image-to-3D data. This highlights two different axes of progress: where SAM 3D uses large-scale real data for robust single-view inference, ShapeR utilizes multi-view geometric constraints to achieve robust, metric scene reconstruction.</p>
+                    <p><b>The two approaches can be combined.</b> By conditioning the second stage of SAM 3D with the output of ShapeR, we can merge the best of both worlds: the metric accuracy and robust layout of ShapeR, and the textures and robust real-world priors of SAM 3D.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Non-Aria Performance Section -->
+    <section class="performance-section">
+        <div class="section-container">
+            <h2 class="section-title">Performance on Non-Aria Data</h2>
+            <p class="section-description">
+                Although trained on simulated data with visual-inertial SLAM points, ShapeR generalizes to other data sources without finetuning. For instance, it can reconstruct complete objects in <b>ScanNet++</b> scenes. Furthermore, by leveraging tools like MapAnything to generate metric points, ShapeR can even produce metric 3D shapes from <b>monocular images</b> without retraining.
+            </p>
+            <div class="performance-grid">
+                <figure class="performance-figure performance-figure--scannet">
+                    <img src="images/from_scannetpp.jpg" alt="ShapeR on ScanNet++">
+                    <figcaption>ShapeR results on ScanNet++, showing complete shape prediction even beyond the ground truth scanned scene.</figcaption>
+                </figure>
+                <figure class="performance-figure performance-figure--mapanything">
+                    <img src="images/from_single_image_map_anything.jpg" alt="ShapeR on iPhone captures">
+                    <figcaption>Reconstruction on images captured with an iPhone, with metric depth maps and poses acquired via Map Anything. ShapeR runs on top to get scene reconstruction.</figcaption>
+                </figure>
+            </div>
+        </div>
+    </section>
+
+    <!-- Citation Section -->
+    <section class="citation-section">
+        <div class="section-container">
+            <h2 class="section-title">Citation</h2>
+            <p class="section-description">
+                If you find this research helpful, please consider citing our paper:
+            </p>
+            <div class="citation-box">
+                <pre><code>@misc{siddiqui2026shaperrobustconditional3d,
+      title={ShapeR: Robust Conditional 3D Shape Generation from Casual Captures}, 
+      author={Yawar Siddiqui and Duncan Frost and Samir Aroudj and Armen Avetisyan and Henry Howard-Jenkins and Daniel DeTone and Pierre Moulon and Qirui Wu and Zhengqin Li and Julian Straub and Richard Newcombe and Jakob Engel},
+      year={2026},
+      eprint={2601.11514},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2601.11514}, 
+}</code></pre>
+                <button class="copy-btn" onclick="copyBibtex()">Copy</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resources Section -->
+    <section class="resources-section">
+        <div class="section-container">
+            <h2 class="section-title">Resources</h2>
+            <div class="resources-grid">
+                <a href="#" class="resource-card">
+                    <div class="resource-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </div>
+                    <h3>arXiv Paper</h3>
+                    <p>Read the full research paper</p>
+                </a>
+                <a href="https://github.com/facebookresearch/ShapeR" class="resource-card">
+                    <div class="resource-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </div>
+                    <h3>GitHub</h3>
+                    <p>View source code and examples</p>
+                </a>
+                <a href="https://huggingface.co/facebook/ShapeR" class="resource-card">
+                    <div class="resource-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                    </div>
+                    <h3>HuggingFace</h3>
+                    <p>Access models and datasets</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
