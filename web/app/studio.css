@@ -2501,7 +2501,7 @@ button {
   background-color: #f5f8f6;
   background-image:
     radial-gradient(ellipse 64% 57% at 50% 47%, #f8faf9 12%, rgba(248, 250, 249, 0.97) 49%, rgba(248, 250, 249, 0.3) 82%, transparent 100%),
-    url("/brand/moving-pattern.svg"),
+    url("/brand/moving-pattern.svg?v=2"),
     linear-gradient(125deg, #edf4ef, #fafbf9 48%, #edf5f0);
   background-position: center, 12px 4px, center;
   background-size: cover, 520px 520px, cover;
@@ -2518,7 +2518,7 @@ button {
   .landing-shell {
     background-image:
       linear-gradient(to bottom, transparent, rgba(248, 250, 249, 0.96) 17%, rgba(248, 250, 249, 0.96) 77%, transparent),
-      url("/brand/moving-pattern.svg"),
+      url("/brand/moving-pattern.svg?v=2"),
       linear-gradient(125deg, #edf4ef, #fafbf9 48%, #edf5f0);
     background-size: cover, 420px 420px, cover;
     background-position: center, -12px -14px, center;
