@@ -20,6 +20,7 @@ type PairingEvent = {
   payload?: {
     jobId?: string;
     eventsUrl?: string;
+    cacheHit?: boolean;
   };
 };
 
@@ -42,7 +43,7 @@ function phoneUrl(pairId: string) {
 export function PhonePairingButton({
   onStarted,
 }: {
-  onStarted: (jobId: string, eventsUrl: string) => void;
+  onStarted: (jobId: string, eventsUrl: string, cacheHit?: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [pairId, setPairId] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export function PhonePairingButton({
             startedRef.current(
               event.payload.jobId,
               event.payload.eventsUrl || `/api/jobs/${event.payload.jobId}/events`,
+              Boolean(event.payload.cacheHit),
             );
           } else if (event.type === "expired") {
             active = false;

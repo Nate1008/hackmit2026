@@ -15,7 +15,6 @@ import {
   Rotate3d,
   ScanSearch,
   Sparkles,
-  Download,
   PanelRightClose,
   RotateCcw,
   Truck as TruckIcon,
@@ -31,7 +30,7 @@ import {
   TransformControls,
   useGLTF,
 } from "@react-three/drei";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
 import {
   Suspense,
   useCallback,
@@ -42,7 +41,7 @@ import {
 } from "react";
 import * as THREE from "three";
 import { MobileCapturePage, PhonePairingButton } from "./mobile-flow";
-import { TruckFitting, type PackingItem } from "./truck-fitting";
+import { estimatePackingItemWeight, PackingItemThumbnail, TruckFitting, type PackingItem } from "./truck-fitting";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_SHAPER_API_URL?.replace(/\/$/, "") ||
@@ -340,20 +339,40 @@ function InteractiveModel({
   );
 }
 
-function PreviewModel({ url }: { url: string }) {
-  const { scene } = useGLTF(url);
-  const model = useMemo(() => {
-    const clone = scene.clone(true);
-    clone.traverse((child) => {
-      if (!(child instanceof THREE.Points)) return;
+function brightPreviewClone(source: THREE.Object3D) {
+  const clone = source.clone(true);
+  clone.traverse((child) => {
+    if (child instanceof THREE.Points) {
       const material = (child.material as THREE.PointsMaterial).clone();
       material.size = 0.012;
       material.sizeAttenuation = true;
       material.vertexColors = true;
       child.material = material;
+      return;
+    }
+    if (!(child instanceof THREE.Mesh)) return;
+    const vertexColors = Boolean(child.geometry.getAttribute("color"));
+    const sourceMaterials = Array.isArray(child.material) ? child.material : [child.material];
+    const converted = sourceMaterials.map((material) => {
+      const sourceMaterial = material as THREE.MeshStandardMaterial;
+      return new THREE.MeshBasicMaterial({
+        color: sourceMaterial.color?.clone() ?? new THREE.Color("#ffffff"),
+        map: sourceMaterial.map ?? null,
+        vertexColors,
+        transparent: sourceMaterial.transparent,
+        opacity: sourceMaterial.opacity,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      });
     });
-    return clone;
-  }, [scene]);
+    child.material = Array.isArray(child.material) ? converted : converted[0];
+  });
+  return clone;
+}
+
+function PreviewModel({ url }: { url: string }) {
+  const { scene } = useGLTF(url);
+  const model = useMemo(() => brightPreviewClone(scene), [scene]);
   return (
     <Bounds fit clip observe margin={1.35}>
       <primitive object={model} />
@@ -370,29 +389,64 @@ function ProcessingModelPreview({ url }: { url: string }) {
         gl={{ antialias: true, alpha: false }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.18;
+          gl.toneMappingExposure = 1.45;
           gl.outputColorSpace = THREE.SRGBColorSpace;
         }}
       >
         <color attach="background" args={["#f7faf9"]} />
-        <ambientLight intensity={0.42} />
-        <hemisphereLight args={["#e5f1ff", "#727b8b", 0.82]} />
-        <directionalLight position={[5, 8, 3]} intensity={2.35} color="#fff4df" />
-        <Environment resolution={128}>
-          <Lightformer form="rect" intensity={2.8} color="#ffffff" position={[0, 5, -4]} scale={[6, 3, 1]} />
-          <Lightformer form="rect" intensity={1.6} color="#8fc5ff" position={[-5, 1, 2]} rotation={[0, Math.PI / 2, 0]} scale={[4, 4, 1]} />
-        </Environment>
+        <ambientLight intensity={2.1} />
+        <hemisphereLight args={["#ffffff", "#dce8e3", 1.5]} />
+        <directionalLight position={[5, 8, 3]} intensity={2.1} color="#ffffff" />
         <Suspense fallback={<ModelLoader />}>
           <PreviewModel url={url} />
         </Suspense>
-        <OrbitControls
-          makeDefault
-          enableDamping
-          dampingFactor={0.075}
-          minDistance={0.5}
-          maxDistance={12}
-        />
+        <OrbitControls makeDefault enableDamping dampingFactor={0.075} minDistance={0.5} maxDistance={12} />
       </Canvas>
+    </div>
+  );
+}
+
+function RotatingObjectModel({ url }: { url: string }) {
+  const { scene } = useGLTF(url);
+  const group = useRef<THREE.Group>(null);
+  const model = useMemo(() => {
+    const clone = brightPreviewClone(scene);
+    clone.updateMatrixWorld(true);
+    const center = new THREE.Box3().setFromObject(clone).getCenter(new THREE.Vector3());
+    clone.position.sub(center);
+    return clone;
+  }, [scene]);
+  useFrame((_, delta) => {
+    if (group.current) group.current.rotation.y += delta * 0.9;
+  });
+  return (
+    <Bounds fit clip observe margin={1.3}>
+      <group ref={group}><primitive object={model} /></group>
+    </Bounds>
+  );
+}
+
+function ObjectMeshGrid({ items }: { items: PackingItem[] }) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  return (
+    <div className="object-mesh-grid">
+      {items.map((item) => (
+        <article key={item.id} className="object-mesh-card" onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId((current) => current === item.id ? null : current)}>
+          <div className="object-mesh-preview">
+            {activeId === item.id ? (
+              <Canvas camera={{ position: [2.4, 1.7, 2.8], fov: 38 }} dpr={[1, 1.4]}>
+                <color attach="background" args={["#f2f7f5"]} />
+                <ambientLight intensity={2.2} />
+                <hemisphereLight args={["#ffffff", "#e0e9e5", 1.4]} />
+                <Suspense fallback={null}><RotatingObjectModel url={item.url} /></Suspense>
+              </Canvas>
+            ) : (
+              <span className="object-mesh-static"><PackingItemThumbnail item={item} /></span>
+            )}
+          </div>
+          <strong>{item.name}</strong>
+        </article>
+      ))}
     </div>
   );
 }
@@ -517,7 +571,7 @@ function SceneViewport({
 function UploadPanel({
   onStarted,
 }: {
-  onStarted: (jobId: string, eventsUrl: string) => void;
+  onStarted: (jobId: string, eventsUrl: string, cacheHit?: boolean) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preset, setPreset] = useState("balance");
@@ -568,7 +622,7 @@ function UploadPanel({
         return;
       }
       const response = JSON.parse(request.responseText);
-      onStarted(response.jobId, response.eventsUrl);
+      onStarted(response.jobId, response.eventsUrl, Boolean(response.cacheHit));
     };
     request.send(data);
   };
@@ -698,9 +752,15 @@ function UploadPanel({
 function PipelineTimeline({
   events,
   currentStage,
+  selectedStage,
+  interactive,
+  onSelect,
 }: {
   events: PipelineEvent[];
   currentStage: string;
+  selectedStage: string;
+  interactive: boolean;
+  onSelect: (stage: string, event?: PipelineEvent) => void;
 }) {
   const activeIndex = stageIndex(currentStage);
   return (
@@ -709,22 +769,26 @@ function PipelineTimeline({
         const Icon = stage.icon;
         const complete = index < activeIndex || currentStage === "complete";
         const active = index === activeIndex && currentStage !== "complete";
-        const event = [...events]
-          .reverse()
-          .find((item) => item.stage === stage.id);
+        const statusEvent = [...events].reverse().find((item) => item.stage === stage.id);
+        const previewEvent = [...events].reverse().find((item) => item.stage === stage.id && item.artifact);
+        const dedicatedView = stage.id === "complete" || stage.id === "shaper" || stage.id === "room";
+        const canView = interactive && (dedicatedView || Boolean(previewEvent));
         return (
-          <div
+          <button
             key={stage.id}
-            className={`pipeline-step ${active ? "active" : ""} ${complete ? "done" : ""}`}
+            type="button"
+            disabled={!canView}
+            className={`pipeline-step ${active ? "active" : ""} ${complete ? "done" : ""} ${interactive && selectedStage === stage.id ? "selected" : ""}`}
+            onClick={() => canView && onSelect(stage.id, previewEvent)}
           >
             <span className="step-icon">
               {complete ? <Check size={15} /> : active ? <LoaderCircle className="spin" size={15} /> : <Icon size={15} />}
             </span>
-            <div>
+            <span>
               <strong>{stage.label}</strong>
-              <small>{event?.title || (active ? "Processing…" : "Waiting")}</small>
-            </div>
-          </div>
+              <small>{statusEvent?.title || (active ? "Processing…" : "Waiting")}</small>
+            </span>
+          </button>
         );
       })}
     </div>
@@ -759,48 +823,46 @@ function ArtifactPreview({ event }: { event?: PipelineEvent }) {
 function Inspector({
   name,
   result,
+  item,
   onClose,
 }: {
   name: string;
   result: JobResult;
+  item?: PackingItem;
   onClose: () => void;
 }) {
-  const object = result.objects.find((item) => item.name === name);
+  const object = result.objects.find((candidate) => candidate.name === name);
   const room = name.startsWith("room_");
+  const weight = item ? estimatePackingItemWeight(item) : null;
   return (
     <aside className="inspector">
       <div className="panel-heading">
-        <span>Inspector</span>
-        <button className="panel-close" onClick={onClose} aria-label="Close inspector">
+        <span>Item details</span>
+        <button className="panel-close" onClick={onClose} aria-label="Close item details">
           <PanelRightClose size={16} />
         </button>
       </div>
       <div className="object-orb">
-        {room ? <Layers3 size={28} /> : <Box size={28} />}
+        {item ? <PackingItemThumbnail item={item} /> : <Layers3 size={28} />}
       </div>
-      <p className="micro-label">{room ? "SCENE SURFACE" : "SAM3 LABEL"}</p>
       <h2>{object?.label || prettyName(name)}</h2>
-      <p className="object-id">{name}</p>
-      <div className="metric-grid">
-        <div>
-          <span>Type</span>
-          <strong>{room ? "Room surface" : "Object mesh"}</strong>
-        </div>
-        <div>
-          <span>Color</span>
-          <strong>{room ? "Fused RGB" : "Projected RGB"}</strong>
-        </div>
-        {object && (
+      <div className="metric-grid item-metric-grid">
+        {item ? (
           <>
             <div>
-              <span>Views</span>
-              <strong>{object.visibleViews}</strong>
+              <span>Size</span>
+              <strong>{item.width.toFixed(2)} × {item.height.toFixed(2)} × {item.depth.toFixed(2)} m</strong>
             </div>
             <div>
-              <span>Direct color</span>
-              <strong>{Math.round(object.directColorFraction * 100)}%</strong>
+              <span>Estimated weight</span>
+              <strong>~{weight?.kg.toFixed(1)} kg</strong>
             </div>
           </>
+        ) : (
+          <div>
+            <span>Surface</span>
+            <strong>{room ? "Room geometry" : "Reconstructed item"}</strong>
+          </div>
         )}
       </div>
     </aside>
@@ -820,8 +882,12 @@ export function Studio() {
   const eventSocket = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<number | null>(null);
   const reconnectEnabled = useRef(false);
+  const replayRun = useRef(0);
   const [mobilePairId, setMobilePairId] = useState<string | null | undefined>(undefined);
   const [resultView, setResultView] = useState<ResultView>("scene");
+  const [pipelinePreview, setPipelinePreview] = useState<PipelineEvent | null>(null);
+  const [selectedPipelineStage, setSelectedPipelineStage] = useState("complete");
+  const [truckVisited, setTruckVisited] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -848,12 +914,14 @@ export function Studio() {
   }, []);
 
   useEffect(() => () => {
+    replayRun.current += 1;
     reconnectEnabled.current = false;
     eventSocket.current?.close();
     if (reconnectTimer.current !== null) window.clearTimeout(reconnectTimer.current);
   }, []);
 
-  const connectEvents = useCallback((id: string, _eventsUrl: string) => {
+  const connectEvents = useCallback((id: string, _eventsUrl: string, replayCached = false) => {
+    const run = ++replayRun.current;
     reconnectEnabled.current = false;
     eventSocket.current?.close();
     if (reconnectTimer.current !== null) window.clearTimeout(reconnectTimer.current);
@@ -879,6 +947,8 @@ export function Studio() {
       if (event.type === "complete") {
         setResult(event.payload as unknown as JobResult);
         setPhase("complete");
+        setSelectedPipelineStage("complete");
+        setPipelinePreview(null);
         stop();
       } else if (event.type === "error" || event.type === "cancelled") {
         setPhase("error");
@@ -907,7 +977,47 @@ export function Studio() {
       socket.onerror = () => socket.close();
     };
 
-    connect();
+    if (!replayCached) {
+      connect();
+      return;
+    }
+
+    const replay = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE}/api/jobs/${encodeURIComponent(id)}/events/history`,
+        );
+        if (!response.ok) throw new Error("Could not load cached reconstruction history");
+        const payload = await response.json() as { events?: PipelineEvent[] };
+        const history = payload.events ?? [];
+        const lastForStage = (stage: string) => (
+          [...history].reverse().find((event) => event.stage === stage && event.artifact) ||
+          [...history].reverse().find((event) => event.stage === stage)
+        );
+        const firstForStage = (stage: string) => history.find((event) => event.stage === stage);
+        const sequence = [
+          lastForStage("frames"),
+          lastForStage("segmentation"),
+          lastForStage("geometry"),
+          firstForStage("shaper"),
+          ...history.filter((event) => event.stage === "shaper" && event.type === "object"),
+          lastForStage("room"),
+          [...history].reverse().find((event) => event.type === "complete"),
+        ].filter((event): event is PipelineEvent => Boolean(event));
+
+        for (const event of sequence) {
+          if (run !== replayRun.current) return;
+          handle(event);
+          if (event.type === "complete") return;
+          const delay = event.type === "object" ? 1000 : 2000;
+          await new Promise((resolve) => window.setTimeout(resolve, delay));
+        }
+      } catch {
+        if (run === replayRun.current) connect();
+      }
+    };
+
+    void replay();
   }, []);
 
   useEffect(() => {
@@ -918,7 +1028,7 @@ export function Studio() {
     connectEvents(resumeId, `/api/jobs/${resumeId}/events`);
   }, [connectEvents, jobId]);
 
-  const startJob = (id: string, eventsUrl: string) => {
+  const startJob = (id: string, eventsUrl: string, cacheHit = false) => {
     setJobId(id);
     setEvents([]);
     setResult(null);
@@ -926,8 +1036,11 @@ export function Studio() {
     setCurrentStage("queued");
     setPhase("processing");
     setResultView("scene");
+    setPipelinePreview(null);
+    setSelectedPipelineStage("complete");
+    setTruckVisited(false);
     window.history.replaceState(null, "", `?job=${id}`);
-    connectEvents(id, eventsUrl);
+    connectEvents(id, eventsUrl, cacheHit);
   };
 
   const packingItems = useMemo<PackingItem[]>(() => (
@@ -946,6 +1059,7 @@ export function Studio() {
   ), [result]);
 
   const reset = async () => {
+    replayRun.current += 1;
     reconnectEnabled.current = false;
     eventSocket.current?.close();
     if (reconnectTimer.current !== null) {
@@ -959,6 +1073,9 @@ export function Studio() {
     setSelectedName(null);
     setHoveredName(null);
     setResultView("scene");
+    setPipelinePreview(null);
+    setSelectedPipelineStage("complete");
+    setTruckVisited(false);
     window.history.replaceState(null, "", window.location.pathname);
   };
 
@@ -980,8 +1097,9 @@ export function Studio() {
           <UploadPanel onStarted={startJob} />
         </div>
       ) : (
-        <div className="workspace">
-          <aside className="pipeline-panel">
+        <div className={"workspace " + (phase === "complete" && result && resultView === "truck" ? "truck-workspace" : "")} >
+          {!(phase === "complete" && result && resultView === "truck") && (
+          <aside className={`pipeline-panel ${phase === "processing" ? "has-loader" : ""}`}>
             <div className="panel-heading">
               <span>Reconstruction</span>
               <button className="panel-new" onClick={reset}>New capture</button>
@@ -993,76 +1111,84 @@ export function Studio() {
               </div>
             </div>
             <div className="progress-track"><span style={{ width: `${progress * 100}%` }} /></div>
-            <PipelineTimeline events={events} currentStage={currentStage} />
+            <PipelineTimeline events={events} currentStage={currentStage} selectedStage={selectedPipelineStage} interactive={phase === "complete" && Boolean(result)} onSelect={(stage, event) => { setSelectedPipelineStage(stage); setPipelinePreview(event ?? null); setResultView("scene"); }} />
+
+            {phase === "processing" && (
+              <div className="reconstruction-goose-loader" role="img" aria-label="Reconstruction in progress">
+                <video autoPlay loop muted playsInline preload="auto" aria-hidden="true">
+                  <source src="/brand/reconstruction-loader-transparent.webm" type="video/webm" />
+                </video>
+              </div>
+            )}
 
             {result && (
-              <div className="object-list">
+              <div className="object-list detected-items-list">
                 <div className="list-title">
-                  <span>Scene nodes</span>
-                  <b>{result.objects.length + result.roomNodes.length}</b>
+                  <span>Detected items</span>
+                  <b>{result.objects.length}</b>
                 </div>
-                {result.objects.map((object) => (
-                  <button
-                    key={object.name}
-                    className={selectedName === object.name ? "selected" : ""}
-                    onClick={() => setSelectedName(object.name)}
-                  >
-                    <Cuboid size={15} />
-                    <span>
-                      <strong>{object.label}</strong>
-                      <small>{object.visibleViews} views</small>
-                    </span>
-                    <ChevronRight size={14} />
-                  </button>
-                ))}
-                {result.roomNodes.map((name) => (
-                  <button
-                    key={name}
-                    className={selectedName === name ? "selected" : ""}
-                    onClick={() => setSelectedName(name)}
-                  >
-                    <Layers3 size={15} />
-                    <span><strong>{prettyName(name)}</strong><small>TSDF surface</small></span>
-                    <ChevronRight size={14} />
-                  </button>
-                ))}
+                {result.objects.map((object) => {
+                  const item = packingItems.find((candidate) => candidate.id === object.name);
+                  const weight = item ? estimatePackingItemWeight(item) : null;
+                  return (
+                    <button
+                      key={object.name}
+                      className={selectedName === object.name ? "selected" : ""}
+                      onClick={() => setSelectedName(object.name)}
+                    >
+                      <span className="item-thumb detected-item-thumb">{item ? <PackingItemThumbnail item={item} /> : <Cuboid size={15} />}</span>
+                      <span>
+                        <strong>{object.label}</strong>
+                        {item && <small>{item.width.toFixed(2)} × {item.height.toFixed(2)} × {item.depth.toFixed(2)} m · ~{weight?.kg.toFixed(1)} kg</small>}
+                      </span>
+                      <ChevronRight size={14} />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </aside>
+          )}
 
-          <section className="main-stage">
-            <div className="stage-header">
-              <h2>{phase === "complete" ? (resultView === "scene" ? "Reconstructed items" : "Truck fit") : statusEvent?.title || "Reconstructing"}</h2>
-              <div className="stage-actions">
-                {phase === "complete" && result && (
-                  <>
-                    <div className="result-switch" role="tablist" aria-label="Result view">
-                      <button className={resultView === "scene" ? "active" : ""} onClick={() => setResultView("scene")}>
-                        <Cuboid size={15} /> Scene
-                      </button>
-                      <button className={resultView === "truck" ? "active" : ""} onClick={() => setResultView("truck")}>
-                        <TruckIcon size={15} /> Fit in truck
-                      </button>
-                    </div>
-                    <a className="download-button" href={absoluteUrl(result.sceneUrl)} download>
-                      <Download size={15} /> GLB
-                    </a>
-                  </>
-                )}
+          <section className={phase === "complete" && result ? "main-stage complete-stage" : "main-stage"}>
+            {!(phase === "complete" && result) && (
+              <div className="stage-header">
+                <h2>{statusEvent?.title || "Reconstructing"}</h2>
               </div>
-            </div>
+            )}
             <div className="stage-canvas">
               {phase === "complete" && result ? (
-                resultView === "truck" ? (
-                  <TruckFitting items={packingItems} />
-                ) : (
-                  <SceneViewport
-                    url={absoluteUrl(result.sceneUrl)}
-                    selectedName={selectedName}
-                    onSelect={setSelectedName}
-                    onHover={setHoveredName}
-                  />
-                )
+                <>
+                  {resultView === "scene" && selectedPipelineStage === "complete" && (
+                    <div className="result-switch scene-view-switch">
+                      <button className="fit-truck-cta" onClick={() => { setTruckVisited(true); setResultView("truck"); }}>Fit in truck</button>
+                    </div>
+                  )}
+                  {resultView === "scene" && selectedPipelineStage === "complete" && (
+                    <img className="scene-fit-goose" src="/brand/pointing-goose.png" alt="" aria-hidden="true" />
+                  )}
+                  <div className={"scene-result-surface " + (resultView === "scene" ? "active" : "hidden")}>
+                    {selectedPipelineStage === "shaper" ? (
+                      <ObjectMeshGrid items={packingItems} />
+                    ) : selectedPipelineStage === "room" ? (
+                      <ProcessingModelPreview url={absoluteUrl(result.roomUrl)} />
+                    ) : pipelinePreview && selectedPipelineStage !== "complete" ? (
+                      <ArtifactPreview event={pipelinePreview} />
+                    ) : (
+                      <SceneViewport
+                        url={absoluteUrl(result.sceneUrl)}
+                        selectedName={selectedName}
+                        onSelect={setSelectedName}
+                        onHover={setHoveredName}
+                      />
+                    )}
+                  </div>
+                  {truckVisited && (
+                    <div className={"truck-result-surface " + (resultView === "truck" ? "active" : "hidden")}>
+                      <TruckFitting items={packingItems} onViewScene={() => { setSelectedPipelineStage("complete"); setPipelinePreview(null); setResultView("scene"); }} />
+                    </div>
+                  )}
+                </>
               ) : (
                 <ArtifactPreview event={latestArtifact} />
               )}
@@ -1070,10 +1196,11 @@ export function Studio() {
 
           </section>
 
-          {phase === "complete" && result && resultView === "scene" && displayName && (
+          {phase === "complete" && result && resultView === "scene" && selectedPipelineStage === "complete" && displayName && (
             <Inspector
               name={displayName}
               result={result}
+              item={packingItems.find((candidate) => candidate.id === displayName)}
               onClose={() => {
                 setSelectedName(null);
                 setHoveredName(null);

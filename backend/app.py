@@ -8,14 +8,18 @@ import json
 import mimetypes
 import os
 import shutil
+import ssl
 import time
 import uuid
+import urllib.error
+import urllib.request
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+import certifi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
@@ -352,7 +356,10 @@ app.add_middleware(
         ).split(",")
         if value.strip()
     ],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=os.environ.get(
+        "SHAPER_CORS_ORIGIN_REGEX",
+        r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    ),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -615,6 +622,107 @@ async def create_job(
     TASKS.add(task)
     task.add_done_callback(TASKS.discard)
     return _job_submission(job, cache_hit=False)
+
+
+@app.get("/api/maps/autocomplete")
+async def autocomplete_map_place(q: str = ""):
+    query = q.strip()
+    if len(query) < 2 or len(query) > 200:
+        return {"suggestions": []}
+    api_key = (
+        os.environ.get("GOOGLE_MAPS_BROWSER_API_KEY", "").strip()
+        or os.environ.get("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "").strip()
+    )
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Google Places API key is not configured")
+
+    def call_google_places() -> dict:
+        payload = json.dumps({"input": query, "includeQueryPredictions": False}).encode("utf-8")
+        google_request = urllib.request.Request(
+            "https://places.googleapis.com/v1/places:autocomplete",
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": api_key,
+            },
+        )
+        try:
+            with urllib.request.urlopen(google_request, timeout=10, context=ssl.create_default_context(cafile=certifi.where())) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")
+            raise RuntimeError(detail[:500]) from error
+
+    try:
+        result = await asyncio.to_thread(call_google_places)
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Google place search failed: {error}") from error
+    suggestions = []
+    for suggestion in result.get("suggestions") or []:
+        prediction = suggestion.get("placePrediction") or {}
+        text = ((prediction.get("text") or {}).get("text") or "").strip()
+        if text:
+            suggestions.append({"text": text, "placeId": prediction.get("placeId")})
+        if len(suggestions) >= 6:
+            break
+    return {"suggestions": suggestions}
+
+
+@app.post("/api/maps/route")
+async def compute_map_route(request: Request):
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Google Maps API key is not configured")
+    body = await request.json()
+    origin = str(body.get("origin", "")).strip()
+    destination = str(body.get("destination", "")).strip()
+    if not origin or not destination or len(origin) > 300 or len(destination) > 300:
+        raise HTTPException(status_code=422, detail="Valid origin and destination are required")
+
+    def call_google() -> dict:
+        payload = json.dumps({
+            "origin": {"address": origin},
+            "destination": {"address": destination},
+            "travelMode": "DRIVE",
+            "units": "METRIC",
+        }).encode("utf-8")
+        google_request = urllib.request.Request(
+            "https://routes.googleapis.com/directions/v2:computeRoutes",
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": api_key,
+                "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
+            },
+        )
+        try:
+            with urllib.request.urlopen(google_request, timeout=15, context=ssl.create_default_context(cafile=certifi.where())) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")
+            raise RuntimeError(detail[:500]) from error
+
+    try:
+        result = await asyncio.to_thread(call_google)
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Google route request failed: {error}") from error
+    routes = result.get("routes") or []
+    if not routes:
+        raise HTTPException(status_code=404, detail="No driving route found")
+    route = routes[0]
+    duration = str(route.get("duration") or "0s")
+    try:
+        duration_seconds = float(duration.removesuffix("s"))
+    except ValueError:
+        duration_seconds = 0.0
+    return {
+        "distanceKm": round(float(route.get("distanceMeters", 0)) / 1000, 2),
+        "duration": duration,
+        "durationSeconds": round(duration_seconds),
+        "encodedPolyline": (route.get("polyline") or {}).get("encodedPolyline"),
+    }
 
 
 @app.get("/api/jobs/{job_id}")
