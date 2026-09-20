@@ -2,12 +2,25 @@
 
 <p align="center">
   <img src="web/public/brand/honkpack-hero.png" alt="HonkPack goose filming packed items" width="360">
-
-  <img width="1461" height="720" alt="Screenshot 2026-09-20 at 9 52 28 AM" src="https://github.com/user-attachments/assets/4a19958d-54bb-4de3-b16c-31cfd7a51071" />
-  <img width="1461" height="720" alt="Screenshot 2026-09-20 at 9 50 00 AM" src="https://github.com/user-attachments/assets/17091b9c-3775-46d4-897a-a61768ddf1a7" />
-  <img width="1461" height="720" alt="Screenshot 2026-09-20 at 9 48 54 AM" src="https://github.com/user-attachments/assets/98db0a08-2228-4996-8fbe-68b4a962577c" />
-
 </p>
+
+<table align="center">
+  <tr>
+    <td>
+      <img width="1461" alt="HonkPack screenshot 1" src="https://github.com/user-attachments/assets/4a19958d-54bb-4de3-b16c-31cfd7a51071">
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <img width="1461" alt="HonkPack screenshot 2" src="https://github.com/user-attachments/assets/17091b9c-3775-46d4-897a-a61768ddf1a7">
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <img width="1461" alt="HonkPack screenshot 3" src="https://github.com/user-attachments/assets/98db0a08-2228-4996-8fbe-68b4a962577c">
+    </td>
+  </tr>
+</table>
 
 HonkPack turns a quick walk-around video of your packed belongings into an editable 3D
 scene, then figures out how to fit everything into a rental vehicle, how many trips it
