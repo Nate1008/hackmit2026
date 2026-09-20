@@ -11,8 +11,8 @@
   --accent-soft: rgba(121, 217, 181, 0.15);
   --blue: #9de5ca;
   --danger: #ff7f78;
-  --font-display: Arial, Helvetica, sans-serif;
-  --font-brand: ui-rounded, "Avenir Next", "Trebuchet MS", sans-serif;
+  --font-display: "Bricolage Grotesque", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-brand: var(--font-display);
   --font-mono-ui: "SFMono-Regular", Consolas, monospace;
 }
 
@@ -1252,20 +1252,24 @@ button {
 }
 
 .landing-copy h1 {
-  margin-bottom: 20px;
-  font-family: var(--font-brand);
+  margin-bottom: 22px;
+  font-family: var(--font-display);
   font-size: clamp(42px, 4vw, 58px);
-  font-weight: 650;
-  letter-spacing: -0.055em;
+  font-weight: 700;
+  font-optical-sizing: auto;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 .landing-copy p {
-  max-width: 370px;
-  margin-bottom: 16px;
+  max-width: 40ch;
+  margin-bottom: 14px;
   font-family: var(--font-display);
   font-size: clamp(16px, 1.2vw, 18px);
-  line-height: 1.48;
-  letter-spacing: -0.012em;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
 }
 
 .upload-card {
@@ -1422,9 +1426,10 @@ button {
 
 .footer-brand-name b {
   color: #171d20;
-  font-family: var(--font-brand);
+  font-family: var(--font-display);
   font-size: 16px;
-  letter-spacing: -0.025em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 @media (max-height: 780px) and (min-width: 701px) {
@@ -2489,4 +2494,33 @@ button {
     grid-template-rows: 66px minmax(380px, 1fr) auto;
   }
   .truck-manifest { max-height: 240px; border-left: 0; border-top: 1px solid #e1e9e6; }
+}
+
+/* Small moving tools frame a quiet, readable center. */
+.landing-shell {
+  background-color: #f5f8f6;
+  background-image:
+    radial-gradient(ellipse 64% 57% at 50% 47%, #f8faf9 12%, rgba(248, 250, 249, 0.97) 49%, rgba(248, 250, 249, 0.3) 82%, transparent 100%),
+    url("/brand/moving-pattern.svg"),
+    linear-gradient(125deg, #edf4ef, #fafbf9 48%, #edf5f0);
+  background-position: center, 12px 4px, center;
+  background-size: cover, 520px 520px, cover;
+  background-repeat: no-repeat, repeat, no-repeat;
+}
+
+.landing-shell .city-line,
+.landing-shell .landing-composition::before,
+.landing-shell .landing-composition::after {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .landing-shell {
+    background-image:
+      linear-gradient(to bottom, transparent, rgba(248, 250, 249, 0.96) 17%, rgba(248, 250, 249, 0.96) 77%, transparent),
+      url("/brand/moving-pattern.svg"),
+      linear-gradient(125deg, #edf4ef, #fafbf9 48%, #edf5f0);
+    background-size: cover, 420px 420px, cover;
+    background-position: center, -12px -14px, center;
+  }
 }
