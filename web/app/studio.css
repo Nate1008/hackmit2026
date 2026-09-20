@@ -2524,3 +2524,9 @@ button {
     background-position: center, -12px -14px, center;
   }
 }
+
+/* Headline block sits on the same vertical centre as the upload card */
+.landing-shell .landing-copy {
+  align-self: center;
+  padding: 24px 0 0;
+}
